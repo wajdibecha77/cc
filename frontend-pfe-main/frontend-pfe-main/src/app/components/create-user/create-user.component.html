@@ -1,0 +1,101 @@
+<div class="main-content-header">
+    <h1>Dashboard</h1>
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a routerLink="/dashboard-sales">Utilisateur</a>
+        </li>
+        <li class="breadcrumb-item active">
+            <span class="active">Création</span>
+        </li>
+    </ol>
+</div>
+<!-- End Main Content Header -->
+
+<!-- Vertical Form -->
+<div class="row">
+    <div class="col-xl-12">
+        <div class="card mb-30">
+            <div class="card-body">
+                <div class="card-header">
+                    <h5 class="card-title">Ajouter un utilisateur</h5>
+                </div>
+
+                <form>
+                    <div class="form-group">
+                        <label> Nom et prénom </label>
+                        <input
+                            type="text"
+                            name="email"
+                            [(ngModel)]="user.name"
+                            type="text"
+                            class="form-control"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label> Role </label>
+                        <select
+                            name="role"
+                            [(ngModel)]="user.role"
+                            class="form-control"
+                        >
+                            <option value="EMPLOYEE">Employée</option>
+                            <option value="PLOMBERIE">Plomberie</option>
+                            <option value="ELECTRICIEN">Electricien</option>
+                            <option value="INFORMATICIEN">Informaticien</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label> Email address </label>
+                        <input
+                            type="text"
+                            name="email"
+                            [(ngModel)]="user.email"
+                            type="text"
+                            class="form-control"
+                        />
+                    </div>
+                    <div class="form-group">
+                        <label> Password </label>
+                        <input
+                            type="password"
+                            name="password"
+                            [(ngModel)]="user.password"
+                            class="form-control"
+                        />
+                    </div>
+                    <div class="form-group">
+                        <label> Service </label>
+                        <select
+                            name="role"
+                            [(ngModel)]="user.service"
+                            class="form-control"
+                        >
+                            <ng-container *ngFor="let service of services">
+                                <option [value]="service._id">
+                                    {{ service.name }}
+                                </option>
+                            </ng-container>
+                        </select>
+                        <small id="emailHelp" class="form-text text-muted"
+                            >service est optionnel.</small
+                        >
+                    </div>
+                    <div class="form-group w-100">
+                        <span *ngIf="successMsg" class="alert alert-success">
+                            {{ successMsg }}
+                        </span>
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                        (click)="createUser()"
+                    >
+                        Enregistrer
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

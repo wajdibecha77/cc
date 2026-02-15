@@ -1,0 +1,50 @@
+<!-- Preloader -->
+<!-- <app-preloader></app-preloader> -->
+
+<!-- This conditional block for the rest of the project pages except the authentication pages -->
+<ng-container
+    *ngIf="!isAuthRoute() && role != 'EMPLOYEE'"
+>
+    <app-navbar></app-navbar>
+
+    <app-sidebar></app-sidebar>
+
+    <div class="main-content d-flex flex-column">
+        <router-outlet></router-outlet>
+    </div>
+</ng-container>
+
+<ng-container *ngIf="!isAuthRoute() && role == 'EMPLOYEE'">
+    <app-navbar></app-navbar>
+
+    <div class="d-flex flex-row">
+        <div
+            class="mt-5 crd card d-flex flex-column justify-content-center align-items-center"
+        >
+            <img
+                src="assets/img/avatar.png"
+                class="mb-4"
+                height="180"
+                width="180"
+            />
+            <span class="mb-4">
+                <strong> Nom et prénom : </strong> {{ account.name }}
+            </span>
+            <span class="mb-4">
+                <strong> Email : </strong> {{ account.email }}
+            </span>
+        </div>
+
+        <div class="padding-none w-100">
+            <div class="main-content d-flex flex-column">
+                <router-outlet></router-outlet>
+            </div>
+        </div>
+    </div>
+</ng-container>
+
+<ng-container *ngIf="isAuthRoute()">
+    <router-outlet></router-outlet>
+</ng-container>
+<app-footer *ngIf="!isAuthRoute()"></app-footer>
+<notifier-container></notifier-container>

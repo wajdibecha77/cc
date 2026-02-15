@@ -1,0 +1,56 @@
+<section class="login-page">
+    <div class="ambient-shape shape-one"></div>
+    <div class="ambient-shape shape-two"></div>
+
+    <div class="login-shell">
+        <div class="brand-panel">
+            <div class="logo-wrap">
+                <img src="assets/img/Logo.png" alt="Logo" />
+            </div>
+            <h2>Plateforme Operations</h2>
+            <p>
+                Connectez-vous pour suivre les interventions, fournisseurs,
+                commandes et services en temps reel.
+            </p>
+        </div>
+
+        <div class="form-panel">
+            <h1>Connexion</h1>
+            <p class="subtitle">Entrez vos identifiants pour continuer</p>
+
+            <form (ngSubmit)="handleSubmit()">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input
+                        type="email"
+                        class="form-control"
+                        id="email"
+                        name="email"
+                        [(ngModel)]="email"
+                        placeholder="nom@entreprise.com"
+                        required
+                    />
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <input
+                        type="password"
+                        class="form-control"
+                        id="password"
+                        name="password"
+                        [(ngModel)]="password"
+                        placeholder="********"
+                        required
+                    />
+                </div>
+
+                <button type="submit" class="btn-login">Se connecter</button>
+
+                <a class="fp-link" routerLink="/auth/forgot-password">
+                    Mot de passe oublie ?
+                </a>
+            </form>
+        </div>
+    </div>
+</section>
