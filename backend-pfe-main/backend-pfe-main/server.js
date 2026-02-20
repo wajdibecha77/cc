@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const app = express();
@@ -15,6 +16,8 @@ const userrouter = require("./routes/UserRouter");
 const serviceRouter = require("./routes/ServiceRouter");
 const interRouter = require("./routes/InterventionRouter");
 const adminrourter =  require('./routes/AdminRouter')
+const authRouter = require("./routes/AuthRouter");
+const notificationRouter = require("./routes/NotificationRouter");
 //const clientrouter =  require('./routes/ClientRouter')
 //const productrouter =  require('./routes/ProductRouter')
 //const categoryrouter =  require('./routes/CtaegoryRouter')
@@ -27,6 +30,8 @@ app.use("/orders", orderrouter);
 app.use("/services", serviceRouter);
 app.use("/interventions", interRouter);
 app.use("/admins", adminrourter);
+app.use("/auth", authRouter);
+app.use("/notifications", notificationRouter);
 //app.use("/clients", clientrouter);
 //app.use("/products", productrouter);
 //app.use("/categories", categoryrouter);

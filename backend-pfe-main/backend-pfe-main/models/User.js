@@ -30,6 +30,22 @@ const UserSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Service",
     required: false
+    },
+    passwordResetOtp: {
+        type: String,
+        required: false
+    },
+    passwordResetOtpExpiresAt: {
+        type: Date,
+        required: false
+    },
+    passwordResetToken: {
+        type: String,
+        required: false
+    },
+    passwordResetTokenExpiresAt: {
+        type: Date,
+        required: false
     }
 });
 

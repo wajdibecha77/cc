@@ -26,6 +26,8 @@ import { AuthComponent } from "./template/dashboards/auth/auth/auth.component";
 import { SignupComponent } from "./template/dashboards/auth/signup/signup.component";
 import { SigninComponent } from "./template/dashboards/auth/signin/signin.component";
 import { ForgotPasswordComponent } from "./template/dashboards/auth/forgot-password/forgot-password.component";
+import { ForgotPasswordVerifyComponent } from "./template/dashboards/auth/forgot-password-verify/forgot-password-verify.component";
+import { ForgotPasswordResetComponent } from "./template/dashboards/auth/forgot-password-reset/forgot-password-reset.component";
 import { ChartsComponent } from "./template/dashboards/charts/charts/charts.component";
 import { LineChartsComponent } from "./template/dashboards/charts/line-charts/line-charts.component";
 import { AreaChartsComponent } from "./template/dashboards/charts/area-charts/area-charts.component";
@@ -70,6 +72,7 @@ import { CreateOrderInterventionComponent } from "./components/create-order-inte
 
 const routes: Routes = [
     { path: "", redirectTo: "/auth/signin", pathMatch: "full" },
+    { path: "login", component: LoginComponent },
     { path: "dashboard", component: DashboardComponent },
     { path: "dashboard-client", component: DashboardClientComponent },
     { path: "services", component: ListingServicesComponent },
@@ -89,6 +92,8 @@ const routes: Routes = [
     { path: "create-service", component: CreateServiceComponent },
     { path: "create-service/:id", component: CreateServiceComponent },
     { path: "create-user", component: CreateUserComponent },
+    { path: "create-user/:id", component: CreateUserComponent },
+    { path: "notifications", component: NotificationsComponent },
     { path: "dashboard-sales", component: SalesComponent },
     { path: "creer", component: CreationComponent },
     { path: "dashboard-eCommerce", component: EcommerceComponent },
@@ -179,6 +184,16 @@ const routes: Routes = [
                 path: "forgot-password",
 
                 component: ForgotPasswordComponent,
+            },
+            {
+                path: "forgot-password/verify",
+
+                component: ForgotPasswordVerifyComponent,
+            },
+            {
+                path: "forgot-password/reset",
+
+                component: ForgotPasswordResetComponent,
             },
         ],
     },

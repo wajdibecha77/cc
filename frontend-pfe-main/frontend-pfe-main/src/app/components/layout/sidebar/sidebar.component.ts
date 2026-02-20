@@ -61,4 +61,10 @@ export class SidebarComponent implements OnInit {
     constructor() {}
 
     ngOnInit(): void {}
+
+    logout() {
+        localStorage.removeItem("token");
+        localStorage.removeItem("role");
+        window.location.href = "/auth/signin";
+    }
 }

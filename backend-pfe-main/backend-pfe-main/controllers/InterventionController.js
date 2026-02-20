@@ -2,13 +2,14 @@ const { useColors } = require("debug/src/browser");
 const { MongoClient, ObjectID } = require("mongodb");
 const Intervention = require("../models/intervention");
 const User = require("../models/User");
+const Notification = require("../models/Notification");
 
 module.exports = {
-  addIntervention: (req, res) => {
+  addIntervention: async (req, res) => {
     const { name, delai, description, lieu, degree, createdBy } = req.body;
 
     if (!name || !delai || !description || !lieu || !degree || !createdBy) {
-      res.status(400).json({
+      return res.status(400).json({
         message: "all fields is required!",
       });
     }
@@ -23,48 +24,64 @@ module.exports = {
         degree: degree,
         createdBy: createdBy,
       });
-      newIntervention.save().then(() => {
-        res.status(200).json({
-          message: "Intervention added!",
+      const savedIntervention = await newIntervention.save();
+
+      const creator = await User.findById(createdBy).populate("service");
+      if (creator && creator.role === "EMPLOYEE") {
+        const employeeName = creator?.name || "Employe inconnu";
+        const concernedTarget =
+          (creator?.service && creator.service.name) ||
+          description ||
+          "Non specifie";
+        const interventionDateTime = savedIntervention.createdAt || new Date();
+
+        await Notification.create({
+          category: "INTERVENTION_DECLARED",
+          title: "Nouvelle declaration d'intervention",
+          message:
+            employeeName +
+            " a declare une intervention de type " +
+            name +
+            " au lieu " +
+            lieu +
+            ".",
+          type: "warning",
+          isRead: false,
+          interventionId: savedIntervention._id,
+          metadata: {
+            interventionType: name,
+            employeeName,
+            concernedTarget,
+            interventionDateTime,
+            lieu,
+          },
         });
-      }); // yestanna serivce lin yetsajel
+      }
+
+      return res.status(200).json({
+        message: "Intervention added!",
+        data: savedIntervention,
+      });
     } catch (err) {
-      res.status(500).json({
+      return res.status(500).json({
         message: err,
       });
     }
   },
 
   allInterventions: async (req, res) => {
-    const response = await Intervention.find();
-    let interventions = [];
-    if (response) {
-      for (let i = 0; i < response.length; i++) {
-        let affected = null;
-        if (response[i].affectedBy) {
-          affected = await User.findById({ _id: response[i].affectedBy });
-        }
-        if (response[i].createdBy) {
-          let user = await User.findById({ _id: response[i].createdBy });
+    try {
+      const interventions = await Intervention.find()
+        .populate("createdBy")
+        .populate("affectedBy")
+        .sort({ createdAt: -1 });
 
-          let intervention = {
-            name: response[i].name,
-            _id: response[i]._id,
-            createdBy: user,
-            degree: response[i].degree,
-            affectedBy: affected,
-            etat: response[i].etat,
-            delai: response[i].delai,
-            description: response[i].description,
-            lieu: response[i].lieu,
-            createdAt: response[i].createdAt,
-          };
-          interventions.push(intervention);
-        }
-      }
+      return res.status(200).json(interventions);
+    } catch (err) {
+      return res.status(500).json({
+        message: err.message || "error from server",
+      });
     }
-    console.log(interventions);
-    res.json(interventions);
   },
 
   getInterventionById: async (req, res) => {

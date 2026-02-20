@@ -42,6 +42,7 @@ export class AppComponent implements OnInit, OnDestroy {
     isAuthRoute(): boolean {
         const url = this.location || this.router.url || "";
         return (
+            url === "/login" ||
             url.startsWith("/auth/") ||
             url.startsWith("/others/error-404") ||
             url === "/home"

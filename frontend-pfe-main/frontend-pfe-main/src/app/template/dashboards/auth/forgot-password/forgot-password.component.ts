@@ -1,7 +1,7 @@
 import { Component, OnInit } from "@angular/core";
 import { Router } from "@angular/router";
 import { NotifierService } from "angular-notifier";
-import { UserService } from "src/app/services/user.service";
+import { AuthService } from "src/app/services/auth.service";
 
 @Component({
     selector: "app-forgot-password",
@@ -10,9 +10,10 @@ import { UserService } from "src/app/services/user.service";
 })
 export class ForgotPasswordComponent implements OnInit {
     public email: string = "";
+    public isSubmitting: boolean = false;
 
     constructor(
-        private userService: UserService,
+        private authService: AuthService,
         private notifier: NotifierService,
         private router: Router
     ) {}
@@ -20,18 +21,32 @@ export class ForgotPasswordComponent implements OnInit {
     ngOnInit() {}
 
     handleResetPassword() {
-        this.userService.forgotPassword(this.email).subscribe(
+        if (this.isSubmitting) {
+            return;
+        }
+
+        const normalizedEmail = (this.email || "").trim().toLowerCase();
+        if (!normalizedEmail) {
+            this.notifier.show({
+                type: "warning",
+                message: "Veuillez saisir votre adresse email.",
+                id: "THAT_NOTIFICATION_ID",
+            });
+            return;
+        }
+
+        this.isSubmitting = true;
+        this.authService.forgotPassword(normalizedEmail).subscribe(
             (res: any) => {
                 this.notifier.show({
                     type: "success",
-                    message:
-                        res?.message ||
-                        "Un email de reinitialisation a ete envoye.",
+                    message: "Code envoye par email.",
                     id: "THAT_NOTIFICATION_ID",
                 });
-                setTimeout(() => {
-                    this.router.navigateByUrl("/auth/signin");
-                }, 1500);
+                this.router.navigate(["/auth/forgot-password/verify"], {
+                    queryParams: { email: normalizedEmail },
+                });
+                this.isSubmitting = false;
             },
             (err) => {
                 this.notifier.show({
@@ -41,6 +56,7 @@ export class ForgotPasswordComponent implements OnInit {
                         "Impossible d'envoyer l'email de reinitialisation.",
                     id: "THAT_NOTIFICATION_ID",
                 });
+                this.isSubmitting = false;
             }
         );
     }

@@ -17,8 +17,35 @@ export class UserService {
     }
 
     public forgotPassword(email: string) {
-        return this.http.post(this.base_Url + "/users/forgot-password", {
+        return this.http.post(this.base_Url + "/users/forgot-password/request", {
             email,
+        });
+    }
+
+    public verifyForgotPasswordOtp(email: string, otp: string) {
+        return this.http.post(this.base_Url + "/users/forgot-password/verify", {
+            email,
+            otp,
+        });
+    }
+
+    public resendForgotPasswordOtp(email: string) {
+        return this.http.post(this.base_Url + "/users/forgot-password/resend", {
+            email,
+        });
+    }
+
+    public resetPasswordWithOtp(
+        email: string,
+        resetToken: string,
+        newPassword: string,
+        confirmPassword: string
+    ) {
+        return this.http.post(this.base_Url + "/users/forgot-password/reset", {
+            email,
+            resetToken,
+            newPassword,
+            confirmPassword,
         });
     }
 
@@ -42,6 +69,15 @@ export class UserService {
         return this.http.put(this.base_Url + "/users/update/" + id, account, {
             headers,
         });
+    }
+
+    public getUserById(id) {
+        let token = localStorage.getItem("token");
+        let headers = new HttpHeaders({
+            "x-auth-token": token ? token : "",
+        });
+
+        return this.http.get(this.base_Url + "/users/get/" + id, { headers });
     }
 
     public createUser(account) {

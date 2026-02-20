@@ -5,17 +5,78 @@ const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const Fournisseur = require("../models/fournisseur");
 
+const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
+const escapeRegex = (value) =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const OTP_EXPIRE_MINUTES = 10;
+const RESET_TOKEN_EXPIRE_MINUTES = 15;
+
+const generateOtpCode = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
+
+const sendOtpEmail = async (toEmail, otpCode) => {
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = Number(process.env.SMTP_PORT || 587);
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpFrom = process.env.SMTP_FROM || smtpUser;
+
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    throw new Error(
+      "Configuration SMTP manquante (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS)."
+    );
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    auth: {
+      user: smtpUser,
+      pass: smtpPass,
+    },
+  });
+
+  try {
+    await transporter.sendMail({
+      from: smtpFrom,
+      to: toEmail,
+      subject: "Code de verification - Reinitialisation mot de passe",
+      text:
+        "Bonjour,\n\n" +
+        "Votre code OTP est: " +
+        otpCode +
+        "\n\n" +
+        "Ce code expire dans " +
+        OTP_EXPIRE_MINUTES +
+        " minutes.\n",
+    });
+  } catch (error) {
+    if (
+      error?.responseCode === 535 ||
+      String(error?.message || "").includes("BadCredentials")
+    ) {
+      throw new Error(
+        "Identifiants SMTP invalides. Pour Gmail, utilisez SMTP_USER et un mot de passe d'application (App Password)."
+      );
+    }
+    throw error;
+  }
+};
+
 module.exports = {
   // craete user
   createuser: async (req, res) => {
     const { name, email, password, role } = req.body;
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!name || !email || !password || !role) {
+    if (!name || !normalizedEmail || !password || !role) {
       return res.status(400).json({ message: "Please enter all fields" });
     }
 
     try {
-      const user = await User.findOne({ email });
+      const user = await User.findOne({ email: normalizedEmail });
       if (user) throw Error("User already exists");
 
       const salt = await bcrypt.genSalt(10);
@@ -25,14 +86,14 @@ module.exports = {
       if (!hash) throw Error("Something went wrong hashing the password");
       let newUser = new User({
         name,
-        email,
+        email: normalizedEmail,
         password: hash,
         role: role,
       });
       if (req.body.service) {
         newUser = new User({
           name,
-          email,
+          email: normalizedEmail,
           password: hash,
           service: req.body.service,
           role: req.body.role,
@@ -103,20 +164,88 @@ module.exports = {
     });
   },
 
+  getuserbyidparam: (req, res) => {
+    User.findById({ _id: req.params.id }, (err, user) => {
+      if (err || !user) {
+        res.status(404).json({
+          message: "user not found",
+          data: null,
+        });
+      } else {
+        res.status(200).json({
+          message: "user found",
+          data: user,
+        });
+      }
+    });
+  },
+
   updateuser: async (req, res) => {
-    const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash(req.body.password, salt);
+    const payload = {};
+
+    if (req.body.name !== undefined && String(req.body.name).trim() !== "") {
+      payload.name = req.body.name;
+    }
+
+    if (req.body.email !== undefined && String(req.body.email).trim() !== "") {
+      payload.email = normalizeEmail(req.body.email);
+    }
+
+    if (req.body.role !== undefined && String(req.body.role).trim() !== "") {
+      payload.role = req.body.role;
+    }
+
+    if (
+      req.body.service !== undefined &&
+      req.body.service !== null &&
+      String(req.body.service).trim() !== ""
+    ) {
+      payload.service = req.body.service;
+    }
+
+    if (
+      req.body.password !== undefined &&
+      String(req.body.password).trim() !== ""
+    ) {
+      const salt = await bcrypt.genSalt(10);
+      const hash = await bcrypt.hash(req.body.password, salt);
+      payload.password = hash;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      return res.status(200).json({
+        message: "no field changed",
+        data: null,
+      });
+    }
+
+    if (payload.email) {
+      const existingUser = await User.findOne({
+        email: payload.email,
+        _id: { $ne: req.params.id },
+      });
+
+      if (existingUser) {
+        return res.status(400).json({
+          message: "email already exists",
+          data: null,
+        });
+      }
+    }
+
     User.findByIdAndUpdate(
       { _id: req.params.id },
-      {
-        name: req.body.name,
-        email: req.body.email,
-        password: hash,
-      },
+      payload,
+      { new: true },
       (err, user) => {
-        if (!user) {
-          res.status(500).json({
-            message: "user not updated ",
+        if (err) {
+          res.status(400).json({
+            message: err.message || "user not updated",
+            data: null,
+          });
+        } else if (!user) {
+          res.status(404).json({
+            message: "user not found",
             data: null,
           });
         } else {
@@ -258,105 +387,268 @@ module.exports = {
     );
   },
 
-  authenticate: (req, res) => {
+  authenticate: async (req, res) => {
     const { email, password } = req.body;
+    const normalizedEmail = normalizeEmail(email);
     // Simple validation
-    if (!email || !password) {
-      return res.status(500).json({ message: "Please enter all fields" });
-    } else {
-      User.findOne({ email: email }, async (err, user) => {
-        if (!user) {
-          res.status(500).json({
-            message: "user with this email does not exist",
-          });
-        } else {
-          const isMatch = await bcrypt.compare(password, user.password);
+    if (!normalizedEmail || !password) {
+      return res.status(400).json({ message: "Please enter all fields" });
+    }
 
-          if (!isMatch) {
-            res.status(500).json({
-              message: "invalid password",
-            });
-          } else {
-            const token = jwt.sign({ id: user._id }, "jwt-secret");
-            res.status(200).json({
-              token: token,
-              role: user.role,
-            });
-          }
-        }
+    try {
+      const user = await User.findOne({
+        email: {
+          $regex: new RegExp("^" + escapeRegex(normalizedEmail) + "$", "i"),
+        },
+      });
+
+      if (!user) {
+        return res.status(401).json({
+          message: "user with this email does not exist",
+        });
+      }
+
+      let isMatch = false;
+
+      try {
+        isMatch = await bcrypt.compare(password, user.password);
+      } catch (error) {
+        // Backward compatibility for legacy records with plain-text password.
+        isMatch = String(password) === String(user.password);
+      }
+
+      if (!isMatch) {
+        return res.status(401).json({
+          message: "invalid password",
+        });
+      }
+
+      if (String(user.password) === String(password)) {
+        const salt = await bcrypt.genSalt(10);
+        const hash = await bcrypt.hash(password, salt);
+        await User.findByIdAndUpdate(
+          { _id: user._id },
+          { password: hash },
+          { new: true }
+        );
+      }
+
+      const token = jwt.sign({ id: user._id }, "jwt-secret");
+
+      return res.status(200).json({
+        token: token,
+        role: user.role,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        message: error.message || "Authentication failed",
       });
     }
   },
 
-  forgotPassword: async (req, res) => {
+  requestPasswordReset: async (req, res) => {
     const { email } = req.body;
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!email) {
+    if (!normalizedEmail) {
       return res.status(400).json({ message: "Email is required" });
     }
 
     try {
-      const user = await User.findOne({ email: email });
+      const user = await User.findOne({
+        email: {
+          $regex: new RegExp("^" + escapeRegex(normalizedEmail) + "$", "i"),
+        },
+      });
+
       if (!user) {
         return res.status(404).json({
           message: "Aucun utilisateur n'est associe a cet email.",
         });
       }
 
-      const temporaryPassword = crypto.randomBytes(6).toString("base64url");
-      const salt = await bcrypt.genSalt(10);
-      const hash = await bcrypt.hash(temporaryPassword, salt);
+      const otpCode = generateOtpCode();
+      const otpExpiresAt = new Date(
+        Date.now() + OTP_EXPIRE_MINUTES * 60 * 1000
+      );
+
+      await sendOtpEmail(user.email, otpCode);
 
       await User.findByIdAndUpdate(
         { _id: user._id },
-        { password: hash },
+        {
+          passwordResetOtp: otpCode,
+          passwordResetOtpExpiresAt: otpExpiresAt,
+          passwordResetToken: null,
+          passwordResetTokenExpiresAt: null,
+        },
         { new: true }
       );
 
-      const smtpHost = process.env.SMTP_HOST;
-      const smtpPort = Number(process.env.SMTP_PORT || 587);
-      const smtpUser = process.env.SMTP_USER;
-      const smtpPass = process.env.SMTP_PASS;
-      const smtpFrom = process.env.SMTP_FROM || smtpUser;
-
-      if (!smtpHost || !smtpUser || !smtpPass) {
-        return res.status(500).json({
-          message:
-            "Configuration SMTP manquante (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS).",
-        });
-      }
-
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpPort === 465,
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-      });
-
-      await transporter.sendMail({
-        from: smtpFrom,
-        to: email,
-        subject: "Reinitialisation de votre mot de passe",
-        text:
-          "Bonjour,\n\n" +
-          "Votre mot de passe temporaire est: " +
-          temporaryPassword +
-          "\n\n" +
-          "Veuillez vous connecter puis le modifier immediatement.\n",
-      });
-
       return res.status(200).json({
-        message:
-          "Un mot de passe temporaire a ete envoye a votre adresse email.",
+        message: "Code OTP envoye par email.",
       });
     } catch (error) {
       return res.status(500).json({
-        message: error.message || "Erreur lors de la reinitialisation.",
+        message: error.message || "Erreur lors de l'envoi du code OTP.",
       });
     }
+  },
+
+  resendPasswordResetOtp: async (req, res) => {
+    return module.exports.requestPasswordReset(req, res);
+  },
+
+  verifyPasswordResetOtp: async (req, res) => {
+    const { email, otp } = req.body;
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedOtp = String(otp || "").trim();
+
+    if (!normalizedEmail || !normalizedOtp) {
+      return res.status(400).json({
+        message: "Email et code OTP sont obligatoires.",
+      });
+    }
+
+    try {
+      const user = await User.findOne({
+        email: {
+          $regex: new RegExp("^" + escapeRegex(normalizedEmail) + "$", "i"),
+        },
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          message: "Utilisateur introuvable.",
+        });
+      }
+
+      if (!user.passwordResetOtp || !user.passwordResetOtpExpiresAt) {
+        return res.status(400).json({
+          message: "Aucune demande OTP en cours. Relancez la reinitialisation.",
+        });
+      }
+
+      if (new Date(user.passwordResetOtpExpiresAt).getTime() < Date.now()) {
+        return res.status(400).json({
+          message: "Le code OTP a expire. Demandez un nouveau code.",
+        });
+      }
+
+      if (String(user.passwordResetOtp) !== normalizedOtp) {
+        return res.status(400).json({
+          message: "Code OTP invalide.",
+        });
+      }
+
+      const resetToken = crypto.randomBytes(24).toString("hex");
+      const resetTokenExpiresAt = new Date(
+        Date.now() + RESET_TOKEN_EXPIRE_MINUTES * 60 * 1000
+      );
+
+      await User.findByIdAndUpdate(
+        { _id: user._id },
+        {
+          passwordResetToken: resetToken,
+          passwordResetTokenExpiresAt: resetTokenExpiresAt,
+          passwordResetOtp: null,
+          passwordResetOtpExpiresAt: null,
+        },
+        { new: true }
+      );
+
+      return res.status(200).json({
+        message: "Code OTP valide.",
+        resetToken,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        message: error.message || "Erreur lors de la verification OTP.",
+      });
+    }
+  },
+
+  resetPasswordWithOtp: async (req, res) => {
+    const { email, resetToken, newPassword, confirmPassword } = req.body;
+    const normalizedEmail = normalizeEmail(email);
+
+    if (!normalizedEmail || !resetToken || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        message: "Tous les champs sont obligatoires.",
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        message: "Les mots de passe ne correspondent pas.",
+      });
+    }
+
+    if (String(newPassword).length < 8) {
+      return res.status(400).json({
+        message: "Le mot de passe doit contenir au moins 8 caracteres.",
+      });
+    }
+
+    try {
+      const user = await User.findOne({
+        email: {
+          $regex: new RegExp("^" + escapeRegex(normalizedEmail) + "$", "i"),
+        },
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          message: "Utilisateur introuvable.",
+        });
+      }
+
+      if (!user.passwordResetToken || !user.passwordResetTokenExpiresAt) {
+        return res.status(400).json({
+          message:
+            "Session de reinitialisation invalide. Recommencez le processus.",
+        });
+      }
+
+      if (String(user.passwordResetToken) !== String(resetToken)) {
+        return res.status(400).json({
+          message: "Jeton de reinitialisation invalide.",
+        });
+      }
+
+      if (new Date(user.passwordResetTokenExpiresAt).getTime() < Date.now()) {
+        return res.status(400).json({
+          message: "Le jeton de reinitialisation a expire.",
+        });
+      }
+
+      const salt = await bcrypt.genSalt(10);
+      const hash = await bcrypt.hash(newPassword, salt);
+
+      await User.findByIdAndUpdate(
+        { _id: user._id },
+        {
+          password: hash,
+          passwordResetOtp: null,
+          passwordResetOtpExpiresAt: null,
+          passwordResetToken: null,
+          passwordResetTokenExpiresAt: null,
+        },
+        { new: true }
+      );
+
+      return res.status(200).json({
+        message: "Mot de passe modifie avec succes.",
+      });
+    } catch (error) {
+      return res.status(500).json({
+        message: error.message || "Erreur lors de la mise a jour du mot de passe.",
+      });
+    }
+  },
+
+  forgotPassword: async (req, res) => {
+    return module.exports.requestPasswordReset(req, res);
   },
 
   uploadavatar: (req, res) => {

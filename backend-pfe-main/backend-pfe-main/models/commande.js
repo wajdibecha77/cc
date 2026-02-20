@@ -10,10 +10,6 @@ const commandeSchema = new mongoose.Schema({
     type: String,
     reuired: true,
   },
-  prix: {
-    type: Number,
-    reuired: true,
-  },
   quantite: {
     type: Number,
     reuired: true,

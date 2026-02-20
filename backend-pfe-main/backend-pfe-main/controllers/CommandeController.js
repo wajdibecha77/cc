@@ -2,10 +2,34 @@ const Commande = require("../models/commande");
 
 module.exports = {
   createCommande: async (req, res) => {
-    const { produit, prix, quantite, fournisseurId } = req.body;
+    const { produit, quantite, fournisseurId } = req.body;
 
-    if (!produit || !prix || !quantite || !fournisseurId) {
-      return res.status(400).json({ message: "Please enter all fields" });
+    const missingFields = [];
+
+    if (produit === undefined || produit === null || String(produit).trim() === "") {
+      missingFields.push("produit");
+    }
+
+    if (
+      quantite === undefined ||
+      quantite === null ||
+      String(quantite).trim() === ""
+    ) {
+      missingFields.push("quantite");
+    }
+
+    if (
+      fournisseurId === undefined ||
+      fournisseurId === null ||
+      String(fournisseurId).trim() === ""
+    ) {
+      missingFields.push("fournisseurId");
+    }
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        message: `Champs obligatoires manquants: ${missingFields.join(", ")}`,
+      });
     }
 
     try {
@@ -13,7 +37,6 @@ module.exports = {
       if (req.body.interventionId) {
         newOrder = new Commande({
           produit,
-          prix,
           quantite,
           fournisseurId,
           interventionId: req.body.interventionId,
@@ -21,7 +44,6 @@ module.exports = {
       } else {
         newOrder = new Commande({
           produit,
-          prix,
           quantite,
           fournisseurId,
         });

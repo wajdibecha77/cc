@@ -44,6 +44,8 @@ import { SignupComponent } from "./template/dashboards/auth/signup/signup.compon
 import { AuthComponent } from "./template/dashboards/auth/auth/auth.component";
 import { SigninComponent } from "./template/dashboards/auth/signin/signin.component";
 import { ForgotPasswordComponent } from "./template/dashboards/auth/forgot-password/forgot-password.component";
+import { ForgotPasswordVerifyComponent } from "./template/dashboards/auth/forgot-password-verify/forgot-password-verify.component";
+import { ForgotPasswordResetComponent } from "./template/dashboards/auth/forgot-password-reset/forgot-password-reset.component";
 import { LineChartsComponent } from "./template/dashboards/charts/line-charts/line-charts.component";
 import { ChartsComponent } from "./template/dashboards/charts/charts/charts.component";
 import { AreaChartsComponent } from "./template/dashboards/charts/area-charts/area-charts.component";
@@ -167,6 +169,8 @@ import { CreateOrderInterventionComponent } from './components/create-order-inte
         AuthComponent,
         SigninComponent,
         ForgotPasswordComponent,
+        ForgotPasswordVerifyComponent,
+        ForgotPasswordResetComponent,
         LineChartsComponent,
         ChartsComponent,
         AreaChartsComponent,

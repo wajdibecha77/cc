@@ -6,24 +6,22 @@ import { Pipe, PipeTransform } from "@angular/core";
 })
 export class InterventionPipe implements PipeTransform {
     transform(items: any, filter: any): any {
-        console.log(filter, items);
-        if (items && items.length > 0) {
-            return items.filter((item) => {
-                return (
-                    item.name
-                        .toLowerCase()
-                        .includes(filter.name.toLowerCase()) &&
-                    item.lieu
-                        .toLowerCase()
-                        .includes(filter.lieu.toLowerCase()) &&
-                    item.etat
-                        .toLowerCase()
-                        .includes(filter.etat.toLowerCase()) &&
-                    item.createdBy.name
-                        .toLowerCase()
-                        .includes(filter.createdBy.toLowerCase())
-                );
-            });
+        if (!items || items.length === 0) {
+            return [];
         }
+
+        return items.filter((item) => {
+            const name = String(item?.name || "").toLowerCase();
+            const lieu = String(item?.lieu || "").toLowerCase();
+            const etat = String(item?.etat || "").toLowerCase();
+            const createdByName = String(item?.createdBy?.name || "").toLowerCase();
+
+            return (
+                name.includes(String(filter?.name || "").toLowerCase()) &&
+                lieu.includes(String(filter?.lieu || "").toLowerCase()) &&
+                etat.includes(String(filter?.etat || "").toLowerCase()) &&
+                createdByName.includes(String(filter?.createdBy || "").toLowerCase())
+            );
+        });
     }
 }

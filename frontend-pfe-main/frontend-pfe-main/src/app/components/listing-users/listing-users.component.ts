@@ -1,4 +1,5 @@
 import { Component, OnInit } from "@angular/core";
+import { Router } from "@angular/router";
 import { User } from "src/app/models/user";
 import { UserService } from "src/app/services/user.service";
 
@@ -10,7 +11,7 @@ import { UserService } from "src/app/services/user.service";
 export class ListingUsersComponent implements OnInit {
     public users: User[];
     public filter;
-    constructor(private userService: UserService) {
+    constructor(private userService: UserService, private router: Router) {
         this.filter = {
             name: "",
             role: "",
@@ -30,6 +31,12 @@ export class ListingUsersComponent implements OnInit {
             this.userService.getAllUsers().subscribe((res: any) => {
                 this.users = res.data;
             });
+        });
+    }
+
+    editUser(user: any) {
+        this.router.navigate(["/create-user", user?._id], {
+            state: { user },
         });
     }
 }
